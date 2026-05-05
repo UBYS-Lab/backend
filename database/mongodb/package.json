@@ -1,0 +1,9 @@
+{
+  "name": "ubys-db-seeder",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "mongodb": "^6.13.0"
+  }
+}

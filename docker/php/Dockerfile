@@ -2,6 +2,9 @@ FROM php:8.3-cli
 
 RUN apt-get update && apt-get install -y \
     git \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    pkg-config \
     libzip-dev \
     unzip \
     zip \

@@ -10,16 +10,7 @@ services:
       - "8001:8000"
     environment:
       COMPOSER_ALLOW_SUPERUSER: "1"
-    depends_on:
-      - mongodb
+      DB_CONNECTION: mongodb
+      DB_URI: 'mongodb://admin:admin!@72.61.136.135:27017/?authSource=admin'
+      DB_DATABASE: ubys_backend
     command: ["sh", "./docker/php/entrypoint.sh", "php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
-
-  mongodb:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-
-volumes:
-  mongodb_data:
