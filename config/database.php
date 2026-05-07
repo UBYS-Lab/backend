@@ -33,9 +33,14 @@ return [
     'connections' => [
 
         'mongodb' => [
-            'driver' => 'mongodb',
-            'dsn' => env('DB_URI'),
+            'driver'   => 'mongodb',
+            'dsn'      => env('DB_URI'),
             'database' => env('DB_DATABASE', 'ubys_backend'),
+            'driver_options' => [
+                'serverSelectionTimeoutMS' => 5000,
+                'connectTimeoutMS'         => 5000,
+                'socketTimeoutMS'          => 10000,
+            ],
         ],
 
         'mysql' => [

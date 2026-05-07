@@ -1,4 +1,4 @@
-FROM php:8.3-cli
+FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     unzip \
     zip \
- && docker-php-ext-install zip \
+ && docker-php-ext-install zip opcache \
  && pecl install mongodb \
  && docker-php-ext-enable mongodb \
  && rm -rf /var/lib/apt/lists/*
