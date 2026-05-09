@@ -4,21 +4,20 @@ namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
 
-class Student extends Model
+class Instructor extends Model
 {
     protected $connection = 'mongodb';
-    protected $collection = 'students';
+    protected $collection = 'instructors';
 
     protected $hidden = ['password'];
 
     protected $fillable = [
-        'student_no',
+        'staff_id',
         'department_id',
-        'enrollment_year',
-        'sequence_no',
         'personal',
         'academic',
         'password',
+        'is_active',
         'created_at',
         'updated_at',
     ];

@@ -11,7 +11,7 @@ services:
       DB_CONNECTION: mongodb
       APP_DEBUG: "false"
       DB_URI: 'mongodb://admin:admin!@72.61.136.135:27017/?authSource=admin&directConnection=true&serverSelectionTimeoutMS=5000&connectTimeoutMS=5000&socketTimeoutMS=10000'
-      DB_DATABASE: ubys_backend
+      DB_DATABASE: ubys
     command: ["sh", "./docker/php/entrypoint.sh", "php-fpm"]
 
   nginx:
