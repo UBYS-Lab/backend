@@ -9,10 +9,11 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-php artisan config:clear >/dev/null 2>&1 || true
-
 if ! grep -q '^APP_KEY=base64:' .env; then
   php artisan key:generate --force
 fi
+
+php artisan config:cache >/dev/null 2>&1 || true
+php artisan route:cache  >/dev/null 2>&1 || true
 
 exec "$@"
