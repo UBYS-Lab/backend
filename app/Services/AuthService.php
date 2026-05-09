@@ -17,14 +17,16 @@ class AuthService
         $student = $this->students->findByStudentNo($identifier);
         if ($student && Hash::check($password, $student->password)) {
             return [
-                'role'          => 'student',
-                'identifier'    => $student->student_no,
-                'full_name'     => ($student->personal['first_name'] ?? '') . ' ' . ($student->personal['last_name'] ?? ''),
-                'email'         => $student->personal['email'] ?? null,
-                'department_id' => $student->department_id,
-                'class_year'    => $student->academic['class_year'] ?? null,
-                'gpa'           => $student->academic['gpa'] ?? null,
-                'status'        => $student->academic['status'] ?? null,
+                'role'            => 'student',
+                'identifier'      => $student->student_no,
+                'full_name'       => ($student->personal['first_name'] ?? '') . ' ' . ($student->personal['last_name'] ?? ''),
+                'email'           => $student->personal['email'] ?? null,
+                'department_id'   => $student->department_id,
+                'class_year'      => $student->academic['class_year'] ?? null,
+                'gpa'             => $student->academic['gpa'] ?? null,
+                'status'          => $student->academic['status'] ?? null,
+                'total_credits'   => $student->academic['total_credits'] ?? 0,
+                'active_semester' => $student->academic['active_semester'] ?? null,
             ];
         }
 
