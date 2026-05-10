@@ -1,6 +1,6 @@
 // =============================================================
-// UBYS – Test Data Script
-// 10 students, 3 instructors, 3 managers + enrollments, grades, attendance
+// UBYS – Test Data Script  (v2)
+// 7 bölüm, 6 öğretmen, 5 test öğrencisi (bölüm/dönem bazlı)
 // Password for ALL accounts: "password"
 //
 // Run: mongosh "mongodb://admin:admin!@72.61.136.135:27017/?authSource=admin" test_data.js
@@ -15,7 +15,8 @@ const PASS = "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
 [
     "faculties", "departments", "semesters", "students", "instructors",
     "managers", "courses", "course_offerings", "enrollments",
-    "grades", "attendance", "announcements", "counters"
+    "grades", "attendance", "announcements", "counters",
+    "course_registration_requests"
 ].forEach(c => { try { db[c].deleteMany({}); } catch(e) {} });
 
 print("Collections cleared.");
@@ -24,9 +25,11 @@ print("Collections cleared.");
 // 1. FACULTIES
 // ══════════════════════════════════════════════════════════════════════════════
 db.faculties.insertMany([
-    { faculty_code: "ENG",  name: "Faculty of Engineering",                          is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
-    { faculty_code: "ECON", name: "Faculty of Economics and Administrative Sciences", is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
-    { faculty_code: "SCI",  name: "Faculty of Science and Letters",                  is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") }
+    { faculty_code: "ENG",  name: "Mühendislik Fakültesi",                      is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { faculty_code: "ECON", name: "İktisadi ve İdari Bilimler Fakültesi",        is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { faculty_code: "SCI",  name: "Fen-Edebiyat Fakültesi",                     is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { faculty_code: "ARTS", name: "İnsan ve Toplum Bilimleri Fakültesi",         is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { faculty_code: "ARCHF","name": "Mimarlık Fakültesi",                        is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") }
 ]);
 print("✓ faculties: " + db.faculties.countDocuments());
 
@@ -34,9 +37,13 @@ print("✓ faculties: " + db.faculties.countDocuments());
 // 2. DEPARTMENTS
 // ══════════════════════════════════════════════════════════════════════════════
 db.departments.insertMany([
-    { department_id: 125, name: "Computer Engineering",                 faculty_code: "ENG",  program_duration: 4, quota: 60, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
-    { department_id: 130, name: "Electrical and Electronics Engineering",faculty_code: "ENG",  program_duration: 4, quota: 50, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
-    { department_id: 210, name: "Business Administration",              faculty_code: "ECON", program_duration: 4, quota: 80, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") }
+    { department_id: 125, name: "Bilgisayar Mühendisliği",          faculty_code: "ENG",   program_duration: 4, quota: 60, max_credits: 30, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 130, name: "Elektrik-Elektronik Mühendisliği", faculty_code: "ENG",   program_duration: 4, quota: 50, max_credits: 30, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 210, name: "İşletme",                          faculty_code: "ECON",  program_duration: 4, quota: 80, max_credits: 38, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 301, name: "Yazılım Mühendisliği",             faculty_code: "ENG",   program_duration: 4, quota: 60, max_credits: 40, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 401, name: "Psikoloji",                        faculty_code: "ARTS",  program_duration: 4, quota: 50, max_credits: 36, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 501, name: "Mimarlık",                         faculty_code: "ARCHF", program_duration: 4, quota: 40, max_credits: 35, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") },
+    { department_id: 601, name: "İngiliz Dili ve Edebiyatı",        faculty_code: "ARTS",  program_duration: 4, quota: 40, max_credits: 42, is_active: true, created_at: new Date("2020-09-01"), updated_at: new Date("2020-09-01") }
 ]);
 print("✓ departments: " + db.departments.countDocuments());
 
@@ -81,21 +88,39 @@ print("✓ semesters: " + db.semesters.countDocuments());
 db.instructors.insertMany([
     {
         staff_id: "INS001", department_id: 125,
-        personal: { first_name: "Ahmet",  last_name: "Çelik",  national_id: "22233344455", email: "ahmet.celik@ubys.edu.tr",  phone: "3121234567", office: "B-201" },
-        academic: { title: "Prof. Dr.",          specializations: ["Artificial Intelligence", "Machine Learning"], publication_count: 47 },
+        personal: { first_name: "Ahmet",  last_name: "Çelik",    national_id: "22233344455", email: "ahmet.celik@ubys.edu.tr",    phone: "3121234567", office: "B-201" },
+        academic: { title: "Prof. Dr.",        specializations: ["Yazılım Mimarisi", "Veritabanı Sistemleri"], publication_count: 47 },
         password: PASS, is_active: true, created_at: new Date("2010-09-01"), updated_at: new Date("2024-09-01")
     },
     {
         staff_id: "INS002", department_id: 125,
-        personal: { first_name: "Fatma",  last_name: "Arslan", national_id: "33344455566", email: "fatma.arslan@ubys.edu.tr", phone: "3121234568", office: "B-205" },
-        academic: { title: "Assoc. Prof. Dr.",   specializations: ["Software Engineering", "Web Technologies"],   publication_count: 22 },
+        personal: { first_name: "Fatma",  last_name: "Arslan",   national_id: "33344455566", email: "fatma.arslan@ubys.edu.tr",   phone: "3121234568", office: "B-205" },
+        academic: { title: "Doç. Dr.",         specializations: ["Yazılım Mühendisliği", "Web Teknolojileri"],  publication_count: 22 },
         password: PASS, is_active: true, created_at: new Date("2015-09-01"), updated_at: new Date("2024-09-01")
     },
     {
         staff_id: "INS003", department_id: 130,
-        personal: { first_name: "Murat",  last_name: "Yıldız", national_id: "44455566677", email: "murat.yildiz@ubys.edu.tr", phone: "3121234569", office: "C-110" },
-        academic: { title: "Asst. Prof. Dr.",    specializations: ["Power Electronics", "Control Systems"],        publication_count: 11 },
+        personal: { first_name: "Murat",  last_name: "Yıldız",   national_id: "44455566677", email: "murat.yildiz@ubys.edu.tr",   phone: "3121234569", office: "C-110" },
+        academic: { title: "Dr. Öğr. Üyesi",   specializations: ["Güç Elektroniği", "Kontrol Sistemleri"],     publication_count: 11 },
         password: PASS, is_active: true, created_at: new Date("2019-09-01"), updated_at: new Date("2024-09-01")
+    },
+    {
+        staff_id: "INS004", department_id: 301,
+        personal: { first_name: "Elif",   last_name: "Aydın",    national_id: "55566677788", email: "elif.aydin@ubys.edu.tr",      phone: "3121234570", office: "B-310" },
+        academic: { title: "Prof. Dr.",        specializations: ["Nesne Yönelimli Programlama", "Yazılım Testi"], publication_count: 35 },
+        password: PASS, is_active: true, created_at: new Date("2012-09-01"), updated_at: new Date("2024-09-01")
+    },
+    {
+        staff_id: "INS005", department_id: 401,
+        personal: { first_name: "Serkan", last_name: "Kaya",     national_id: "66677788899", email: "serkan.kaya@ubys.edu.tr",     phone: "3121234571", office: "E-205" },
+        academic: { title: "Doç. Dr.",         specializations: ["Klinik Psikoloji", "Bilişsel Davranışçı Terapi"], publication_count: 18 },
+        password: PASS, is_active: true, created_at: new Date("2017-09-01"), updated_at: new Date("2024-09-01")
+    },
+    {
+        staff_id: "INS006", department_id: 601,
+        personal: { first_name: "Hülya",  last_name: "Demirci",  national_id: "77788899900", email: "hulya.demirci@ubys.edu.tr",   phone: "3121234572", office: "G-102" },
+        academic: { title: "Prof. Dr.",        specializations: ["İngiliz Romanı", "Karşılaştırmalı Edebiyat"], publication_count: 29 },
+        password: PASS, is_active: true, created_at: new Date("2011-09-01"), updated_at: new Date("2024-09-01")
     }
 ]);
 print("✓ instructors: " + db.instructors.countDocuments());
@@ -126,17 +151,51 @@ print("✓ managers: " + db.managers.countDocuments());
 // 6. COURSES
 // ══════════════════════════════════════════════════════════════════════════════
 db.courses.insertMany([
-    { course_code: "CS101", name: "Introduction to Programming",       department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS102", name: "Discrete Mathematics",              department_id: 125, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS103", name: "Physics I",                         department_id: 125, credits: 4, ects: 6, theory_hours: 3, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS201", name: "Data Structures and Algorithms",    department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 2, prerequisites: ["CS101"],       is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS202", name: "Object-Oriented Programming",       department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 2, prerequisites: ["CS101"],       is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS301", name: "Database Management Systems",       department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 3, prerequisites: ["CS201"],       is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS302", name: "Operating Systems",                 department_id: 125, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 3, prerequisites: ["CS201"],       is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS401", name: "Software Engineering",              department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 4, prerequisites: ["CS302"],       is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "CS490", name: "Graduation Project",                department_id: 125, credits: 4, ects: 8, theory_hours: 0, lab_hours: 4, type: "mandatory", class_year: 4, prerequisites: ["CS301","CS302"], is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "BA101", name: "Introduction to Business",          department_id: 210, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
-    { course_code: "EE101", name: "Circuit Theory",                    department_id: 130, credits: 4, ects: 6, theory_hours: 3, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") }
+    // ── CS (dept 125) ──────────────────────────────────────────────────────────
+    { course_code: "CS101", name: "Programlamaya Giriş",              department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS102", name: "Ayrık Matematik",                  department_id: 125, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS103", name: "Fizik I",                          department_id: 125, credits: 4, ects: 6, theory_hours: 3, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS201", name: "Veri Yapıları ve Algoritmalar",    department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 2, prerequisites: ["CS101"],        is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS202", name: "Nesne Yönelimli Programlama",      department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 2, prerequisites: ["CS101"],        is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS301", name: "Veritabanı Yönetim Sistemleri",    department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 3, prerequisites: ["CS201"],        is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS302", name: "İşletim Sistemleri",               department_id: 125, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 3, prerequisites: ["CS201"],        is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS401", name: "Yazılım Mühendisliği",             department_id: 125, credits: 3, ects: 5, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 4, prerequisites: ["CS302"],        is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "CS490", name: "Bitirme Projesi",                  department_id: 125, credits: 4, ects: 8, theory_hours: 0, lab_hours: 4, type: "mandatory", class_year: 4, prerequisites: ["CS301","CS302"], is_active: true, created_at: new Date("2020-09-01") },
+    // ── EE (dept 130) ──────────────────────────────────────────────────────────
+    { course_code: "EE101", name: "Devre Teorisi",                    department_id: 130, credits: 4, ects: 6, theory_hours: 3, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    // ── İşletme (dept 210) – 3. Dönem (class_year 2) ──────────────────────────
+    { course_code: "BUS201",  name: "Finansal Muhasebe",              department_id: 210, credits: 3, ects: 6, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ECON201", name: "Makro İktisat",                  department_id: 210, credits: 3, ects: 6, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "STAT201", name: "İşletme İstatistikleri",         department_id: 210, credits: 3, ects: 6, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "BUS203",  name: "Örgütsel Davranış",              department_id: 210, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "BUS205",  name: "Pazarlama Yönetimi",             department_id: 210, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELEC001", name: "Sosyal Seçmeli – Girişimcilik",  department_id: 210, credits: 2, ects: 2, theory_hours: 2, lab_hours: 0, type: "elective",  class_year: 2, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    // ── Yazılım Mühendisliği (dept 301) – 1. Dönem ────────────────────────────
+    { course_code: "SENG101", name: "Programlama Temelleri (C#)",     department_id: 301, credits: 4, ects: 7, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "MATH101", name: "Mühendislik Matematiği I",        department_id: 301, credits: 4, ects: 6, theory_hours: 4, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "SENG103", name: "Yazılım Mühendisliğine Giriş",   department_id: 301, credits: 3, ects: 5, theory_hours: 2, lab_hours: 1, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "PHYS101", name: "Fizik I",                        department_id: 301, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ENG101",  name: "Akademik İngilizce I",           department_id: 301, credits: 3, ects: 4, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "GNL101",  name: "Atatürk İlkeleri ve İnkılap Tarihi I", department_id: 301, credits: 2, ects: 3, theory_hours: 2, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [], is_active: true, created_at: new Date("2020-09-01") },
+    // ── Psikoloji (dept 401) – 5. Dönem (class_year 3) ────────────────────────
+    { course_code: "PSY301",  name: "Psikopatoloji",                  department_id: 401, credits: 3, ects: 7, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 3, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "PSY303",  name: "Deneysel Psikoloji",             department_id: 401, credits: 4, ects: 7, theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 3, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "PSY305",  name: "Bilişsel Psikoloji",             department_id: 401, credits: 3, ects: 6, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 3, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "PSY307",  name: "Kişilik Kuramları",              department_id: 401, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 3, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELEC002", name: "Alan Seçmeli – Adli Psikoloji",  department_id: 401, credits: 3, ects: 5, theory_hours: 3, lab_hours: 0, type: "elective",  class_year: 3, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    // ── Mimarlık (dept 501) – 1. Dönem ────────────────────────────────────────
+    { course_code: "ARCH101", name: "Temel Tasarım Stüdyosu",         department_id: 501, credits: 8, ects: 12, theory_hours: 2, lab_hours: 6, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ARCH103", name: "Mimari Anlatım Teknikleri I",    department_id: 501, credits: 4, ects: 6,  theory_hours: 2, lab_hours: 2, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ARCH105", name: "Mimarlık Tarihi I",              department_id: 501, credits: 3, ects: 4,  theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "MATH105", name: "Mimarlar için Geometri",         department_id: 501, credits: 3, ects: 4,  theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "GNL103",  name: "Türk Dili I",                    department_id: 501, credits: 2, ects: 2,  theory_hours: 2, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "GNL105",  name: "Kariyer Planlama",               department_id: 501, credits: 2, ects: 2,  theory_hours: 2, lab_hours: 0, type: "mandatory", class_year: 1, prerequisites: [],              is_active: true, created_at: new Date("2020-09-01") },
+    // ── İngiliz Dili ve Edebiyatı (dept 601) – 7. Dönem (class_year 4) ────────
+    { course_code: "ELIT401", name: "Modern Eleştiri Kuramları",      department_id: 601, credits: 3, ects: 7, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 4, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELIT403", name: "20. Yüzyıl İngiliz Romanı",      department_id: 601, credits: 3, ects: 7, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 4, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELIT405", name: "Karşılaştırmalı Edebiyat",       department_id: 601, credits: 3, ects: 6, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 4, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELIT407", name: "Shakespeare ve Çağdaşları",      department_id: 601, credits: 3, ects: 6, theory_hours: 3, lab_hours: 0, type: "mandatory", class_year: 4, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") },
+    { course_code: "ELEC003", name: "Alan Dışı Seçmeli – Psikanaliz", department_id: 601, credits: 2, ects: 4, theory_hours: 2, lab_hours: 0, type: "elective",  class_year: 4, prerequisites: [],               is_active: true, created_at: new Date("2020-09-01") }
 ]);
 print("✓ courses: " + db.courses.countDocuments());
 
@@ -205,21 +264,107 @@ db.course_offerings.insertMany([
         ],
         is_active: true, created_at: new Date("2025-01-15")
     },
-    {
-        course_code: "BA101", semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A",
-        capacity: 50, enrolled_count: 2,
-        schedule: [
-            { day: "Wednesday", start_time: "13:00", end_time: "16:00", classroom: "D-201" }
-        ],
-        is_active: true, created_at: new Date("2025-01-15")
-    }
+    // ── İşletme 3. Dönem (INS001) ──────────────────────────────────────────────
+    { course_code: "BUS201",  semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 50, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "09:00", end_time: "12:00", classroom: "D-301" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ECON201", semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 50, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "13:00", end_time: "16:00", classroom: "D-302" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "STAT201", semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 40, enrolled_count: 1,
+      schedule: [{ day: "Wednesday", start_time: "09:00", end_time: "11:00", classroom: "D-Lab2" }, { day: "Friday", start_time: "09:00", end_time: "11:00", classroom: "D-Lab2" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "BUS203",  semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 50, enrolled_count: 1,
+      schedule: [{ day: "Thursday",  start_time: "13:00", end_time: "16:00", classroom: "D-303" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "BUS205",  semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 50, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "13:00", end_time: "16:00", classroom: "D-304" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELEC001", semester_name: "2024-2025 Spring", instructor_id: "INS001", section: "A", capacity: 30, enrolled_count: 0,
+      schedule: [{ day: "Friday",    start_time: "13:00", end_time: "15:00", classroom: "D-201" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    // ── Yazılım Mühendisliği 1. Dönem (INS004) ─────────────────────────────────
+    { course_code: "SENG101", semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 40, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "09:00", end_time: "11:00", classroom: "B-Lab2" }, { day: "Wednesday", start_time: "09:00", end_time: "11:00", classroom: "B-Lab2" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "MATH101", semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 40, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "09:00", end_time: "11:00", classroom: "A-201" }, { day: "Thursday", start_time: "09:00", end_time: "11:00", classroom: "A-201" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "SENG103", semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 40, enrolled_count: 1,
+      schedule: [{ day: "Wednesday", start_time: "13:00", end_time: "16:00", classroom: "B-101" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "PHYS101", semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 40, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "11:00", end_time: "14:00", classroom: "A-202" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ENG101",  semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Friday",    start_time: "09:00", end_time: "12:00", classroom: "D-101" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "GNL101",  semester_name: "2024-2025 Spring", instructor_id: "INS004", section: "A", capacity: 60, enrolled_count: 1,
+      schedule: [{ day: "Thursday",  start_time: "13:00", end_time: "15:00", classroom: "A-103" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    // ── Psikoloji 5. Dönem (INS005) ────────────────────────────────────────────
+    { course_code: "PSY301",  semester_name: "2024-2025 Spring", instructor_id: "INS005", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "09:00", end_time: "12:00", classroom: "E-101" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "PSY303",  semester_name: "2024-2025 Spring", instructor_id: "INS005", section: "A", capacity: 25, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "09:00", end_time: "11:00", classroom: "E-Lab1" }, { day: "Thursday", start_time: "09:00", end_time: "11:00", classroom: "E-Lab1" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "PSY305",  semester_name: "2024-2025 Spring", instructor_id: "INS005", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Wednesday", start_time: "13:00", end_time: "16:00", classroom: "E-102" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "PSY307",  semester_name: "2024-2025 Spring", instructor_id: "INS005", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Friday",    start_time: "09:00", end_time: "12:00", classroom: "E-103" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELEC002", semester_name: "2024-2025 Spring", instructor_id: "INS005", section: "A", capacity: 20, enrolled_count: 0,
+      schedule: [{ day: "Thursday",  start_time: "14:00", end_time: "17:00", classroom: "E-104" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    // ── Mimarlık 1. Dönem (INS006) ─────────────────────────────────────────────
+    { course_code: "ARCH101", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 25, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "08:00", end_time: "13:00", classroom: "STÜDYO-1" }, { day: "Wednesday", start_time: "08:00", end_time: "13:00", classroom: "STÜDYO-1" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ARCH103", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 25, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "09:00", end_time: "11:00", classroom: "STÜDYO-2" }, { day: "Thursday", start_time: "09:00", end_time: "11:00", classroom: "STÜDYO-2" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ARCH105", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Friday",    start_time: "09:00", end_time: "12:00", classroom: "F-101" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "MATH105", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 30, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "13:00", end_time: "16:00", classroom: "F-102" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "GNL103",  semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 60, enrolled_count: 1,
+      schedule: [{ day: "Wednesday", start_time: "13:00", end_time: "15:00", classroom: "A-103" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "GNL105",  semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 60, enrolled_count: 1,
+      schedule: [{ day: "Friday",    start_time: "13:00", end_time: "15:00", classroom: "A-104" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    // ── İngiliz Dili ve Edebiyatı 7. Dönem (INS006) ────────────────────────────
+    { course_code: "ELIT401", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 20, enrolled_count: 1,
+      schedule: [{ day: "Monday",    start_time: "09:00", end_time: "12:00", classroom: "G-101" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELIT403", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 20, enrolled_count: 1,
+      schedule: [{ day: "Tuesday",   start_time: "13:00", end_time: "16:00", classroom: "G-102" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELIT405", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 20, enrolled_count: 1,
+      schedule: [{ day: "Wednesday", start_time: "09:00", end_time: "12:00", classroom: "G-103" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELIT407", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 20, enrolled_count: 1,
+      schedule: [{ day: "Thursday",  start_time: "13:00", end_time: "16:00", classroom: "G-104" }],
+      is_active: true, created_at: new Date("2025-01-15") },
+    { course_code: "ELEC003", semester_name: "2024-2025 Spring", instructor_id: "INS006", section: "A", capacity: 15, enrolled_count: 0,
+      schedule: [{ day: "Friday",    start_time: "09:00", end_time: "11:00", classroom: "G-105" }],
+      is_active: true, created_at: new Date("2025-01-15") }
 ]);
 print("✓ course_offerings: " + db.course_offerings.countDocuments());
 
 // ══════════════════════════════════════════════════════════════════════════════
-// 8. STUDENTS  (10 öğrenci)
-//    CS(125)/2024 → 4 kişi | CS(125)/2023 → 2 kişi | CS(125)/2022 → 1 kişi
-//    EE(130)/2023 → 1 kişi | EE(130)/2024 → 1 kişi | BA(210)/2024 → 1 kişi
+// 8. STUDENTS
+//    CS(125)/2024→4 | CS(125)/2023→2 | CS(125)/2022→1
+//    EE(130)/2023→1 | EE(130)/2024→1
+//    BA(210)/2023→1  (2. sınıf, 3. dönem)
+//    SE(301)/2024→1  (1. sınıf, 1. dönem)
+//    PSY(401)/2022→1 (3. sınıf, 5. dönem)
+//    ARCH(501)/2024→1(1. sınıf, 1. dönem)
+//    EL(601)/2021→1  (4. sınıf, 7. dönem)
 // ══════════════════════════════════════════════════════════════════════════════
 db.students.insertMany([
     // ── CS 2024 (1. sınıf) ────────────────────────────────────────────────────
@@ -281,52 +426,98 @@ db.students.insertMany([
         academic:  { class_year: 1, active_semester: "2024-2025 Spring", gpa: 3.60, total_credits: 30, status: "active" },
         password: PASS, created_at: new Date("2024-09-01"), updated_at: new Date("2025-02-17")
     },
-    // ── BA 2024 (1. sınıf) ────────────────────────────────────────────────────
+    // ── BA 2023 (2. sınıf — 3. dönem) ────────────────────────────────────────
     {
-        student_no: "2102024001", department_id: 210, enrollment_year: 2024, sequence_no: 1,
-        personal: { first_name: "Fatma",  last_name: "Bulut",  national_id: "10000000010", birth_date: new Date("2006-06-25"), gender: "F", phone: "5551111010", email: "fatma.bulut@student.ubys.edu.tr",    address: "Konya" },
-        academic:  { class_year: 1, active_semester: "2024-2025 Spring", gpa: 3.80, total_credits: 30, status: "active" },
+        student_no: "2102023001", department_id: 210, enrollment_year: 2023, sequence_no: 1,
+        personal: { first_name: "Berk",   last_name: "Yıldırım", national_id: "10000000010", birth_date: new Date("2005-03-18"), gender: "M", phone: "5551111010", email: "berk.yildirim@student.ubys.edu.tr",  address: "Konya" },
+        academic:  { class_year: 2, active_semester: "2024-2025 Spring", gpa: 3.00, total_credits: 60, status: "active" },
+        password: PASS, created_at: new Date("2023-09-01"), updated_at: new Date("2025-02-17")
+    },
+    // ── SE 2024 (1. sınıf — 1. dönem) ────────────────────────────────────────
+    {
+        student_no: "3012024001", department_id: 301, enrollment_year: 2024, sequence_no: 1,
+        personal: { first_name: "Kaan",   last_name: "Şimşek",  national_id: "10000000011", birth_date: new Date("2006-11-05"), gender: "M", phone: "5551111011", email: "kaan.simsek@student.ubys.edu.tr",    address: "Bursa" },
+        academic:  { class_year: 1, active_semester: "2024-2025 Spring", gpa: 3.40, total_credits: 0,  status: "active" },
         password: PASS, created_at: new Date("2024-09-01"), updated_at: new Date("2025-02-17")
+    },
+    // ── PSY 2022 (3. sınıf — 5. dönem) ───────────────────────────────────────
+    {
+        student_no: "4012022001", department_id: 401, enrollment_year: 2022, sequence_no: 1,
+        personal: { first_name: "Nisa",   last_name: "Çetin",   national_id: "10000000012", birth_date: new Date("2004-07-14"), gender: "F", phone: "5551111012", email: "nisa.cetin@student.ubys.edu.tr",      address: "İzmir" },
+        academic:  { class_year: 3, active_semester: "2024-2025 Spring", gpa: 3.50, total_credits: 120, status: "active" },
+        password: PASS, created_at: new Date("2022-09-01"), updated_at: new Date("2025-02-17")
+    },
+    // ── ARCH 2024 (1. sınıf — 1. dönem) ──────────────────────────────────────
+    {
+        student_no: "5012024001", department_id: 501, enrollment_year: 2024, sequence_no: 1,
+        personal: { first_name: "Emir",   last_name: "Doğan",   national_id: "10000000013", birth_date: new Date("2006-02-28"), gender: "M", phone: "5551111013", email: "emir.dogan@student.ubys.edu.tr",      address: "Ankara" },
+        academic:  { class_year: 1, active_semester: "2024-2025 Spring", gpa: 3.20, total_credits: 0,  status: "active" },
+        password: PASS, created_at: new Date("2024-09-01"), updated_at: new Date("2025-02-17")
+    },
+    // ── EL 2021 (4. sınıf — 7. dönem) ────────────────────────────────────────
+    {
+        student_no: "6012021001", department_id: 601, enrollment_year: 2021, sequence_no: 1,
+        personal: { first_name: "İrem",   last_name: "Güneş",   national_id: "10000000014", birth_date: new Date("2003-09-20"), gender: "F", phone: "5551111014", email: "irem.gunes@student.ubys.edu.tr",      address: "İstanbul" },
+        academic:  { class_year: 4, active_semester: "2024-2025 Spring", gpa: 3.70, total_credits: 180, status: "active" },
+        password: PASS, created_at: new Date("2021-09-01"), updated_at: new Date("2025-02-17")
     }
 ]);
 print("✓ students: " + db.students.countDocuments());
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 9. ENROLLMENTS  (2024-2025 Spring)
-//    1. sınıf CS → CS101, CS102, CS103
-//    2. sınıf CS → CS201, CS202
-//    3. sınıf CS → CS301
-//    EE 1.sınıf  → EE101
-//    BA 1.sınıf  → BA101
 // ══════════════════════════════════════════════════════════════════════════════
 const SEM = "2024-2025 Spring";
 const ED  = new Date("2025-02-17");
 
 const enrollData = [
-    // CS year-1 students (4 students × 3 courses)
+    // CS year-1 (4 öğrenci × 3 ders)
     ...["1252024001","1252024002","1252024003","1252024004"].flatMap(sno =>
         ["CS101","CS102","CS103"].map(code => ({
             student_no: sno, course_code: code, semester_name: SEM, section: "A",
             status: "ongoing", enrollment_date: ED, created_at: ED
         }))
     ),
-    // CS year-2 students (2 students × 2 courses)
+    // CS year-2 (2 öğrenci × 2 ders)
     ...["1252023001","1252023002"].flatMap(sno =>
         ["CS201","CS202"].map(code => ({
             student_no: sno, course_code: code, semester_name: SEM, section: "A",
             status: "ongoing", enrollment_date: ED, created_at: ED
         }))
     ),
-    // CS year-3 student (1 student × 2 courses)
+    // CS year-3
     ...["CS301","CS302"].map(code => ({
         student_no: "1252022001", course_code: code, semester_name: SEM, section: "A",
         status: "ongoing", enrollment_date: ED, created_at: ED
     })),
-    // EE students
+    // EE
     { student_no: "1302023001", course_code: "EE101", semester_name: SEM, section: "A", status: "ongoing", enrollment_date: ED, created_at: ED },
     { student_no: "1302024001", course_code: "EE101", semester_name: SEM, section: "A", status: "ongoing", enrollment_date: ED, created_at: ED },
-    // BA student
-    { student_no: "2102024001", course_code: "BA101", semester_name: SEM, section: "A", status: "ongoing", enrollment_date: ED, created_at: ED }
+    // BA 3. dönem (2102023001)
+    ...["BUS201","ECON201","STAT201","BUS203","BUS205"].map(code => ({
+        student_no: "2102023001", course_code: code, semester_name: SEM, section: "A",
+        status: "ongoing", enrollment_date: ED, created_at: ED
+    })),
+    // SE 1. dönem (3012024001)
+    ...["SENG101","MATH101","SENG103","PHYS101","ENG101","GNL101"].map(code => ({
+        student_no: "3012024001", course_code: code, semester_name: SEM, section: "A",
+        status: "ongoing", enrollment_date: ED, created_at: ED
+    })),
+    // PSY 5. dönem (4012022001)
+    ...["PSY301","PSY303","PSY305","PSY307"].map(code => ({
+        student_no: "4012022001", course_code: code, semester_name: SEM, section: "A",
+        status: "ongoing", enrollment_date: ED, created_at: ED
+    })),
+    // ARCH 1. dönem (5012024001)
+    ...["ARCH101","ARCH103","ARCH105","MATH105","GNL103","GNL105"].map(code => ({
+        student_no: "5012024001", course_code: code, semester_name: SEM, section: "A",
+        status: "ongoing", enrollment_date: ED, created_at: ED
+    })),
+    // EL 7. dönem (6012021001)
+    ...["ELIT401","ELIT403","ELIT405","ELIT407"].map(code => ({
+        student_no: "6012021001", course_code: code, semester_name: SEM, section: "A",
+        status: "ongoing", enrollment_date: ED, created_at: ED
+    }))
 ];
 db.enrollments.insertMany(enrollData);
 print("✓ enrollments: " + db.enrollments.countDocuments());
@@ -464,6 +655,49 @@ db.announcements.insertMany([
     }
 ]);
 print("✓ announcements: " + db.announcements.countDocuments());
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 13. COURSE REGISTRATION REQUESTS  (örnek: 2 bekleyen, 1 onaylı)
+// ══════════════════════════════════════════════════════════════════════════════
+db.course_registration_requests.insertMany([
+    {
+        student_no: "1252024001", student_name: "Ali Yılmaz",
+        department_id: 125, semester_name: SEM,
+        requested_courses: [
+            { course_code: "CS101", course_name: "Introduction to Programming", credits: 3, section: "A", instructor_id: "INS002" },
+            { course_code: "CS102", course_name: "Discrete Mathematics",         credits: 3, section: "A", instructor_id: "INS001" },
+            { course_code: "CS103", course_name: "Physics I",                    credits: 4, section: "A", instructor_id: "INS001" }
+        ],
+        total_credits_requested: 10, instructor_ids: ["INS002","INS001"],
+        status: "pending", feedback: null,
+        submitted_at: new Date("2025-02-16T10:30:00"), reviewed_at: null, reviewed_by: null
+    },
+    {
+        student_no: "1252024003", student_name: "Emre Arslan",
+        department_id: 125, semester_name: SEM,
+        requested_courses: [
+            { course_code: "CS101", course_name: "Introduction to Programming", credits: 3, section: "A", instructor_id: "INS002" },
+            { course_code: "CS102", course_name: "Discrete Mathematics",         credits: 3, section: "A", instructor_id: "INS001" }
+        ],
+        total_credits_requested: 6, instructor_ids: ["INS002","INS001"],
+        status: "pending", feedback: null,
+        submitted_at: new Date("2025-02-16T14:15:00"), reviewed_at: null, reviewed_by: null
+    },
+    {
+        student_no: "1252024002", student_name: "Ayşe Kara",
+        department_id: 125, semester_name: SEM,
+        requested_courses: [
+            { course_code: "CS101", course_name: "Introduction to Programming", credits: 3, section: "A", instructor_id: "INS002" },
+            { course_code: "CS102", course_name: "Discrete Mathematics",         credits: 3, section: "A", instructor_id: "INS001" },
+            { course_code: "CS103", course_name: "Physics I",                    credits: 4, section: "A", instructor_id: "INS001" }
+        ],
+        total_credits_requested: 10, instructor_ids: ["INS002","INS001"],
+        status: "approved", feedback: "Ders seçiminiz onaylandı, başarılar!",
+        submitted_at: new Date("2025-02-15T09:00:00"),
+        reviewed_at: new Date("2025-02-15T11:00:00"), reviewed_by: "INS001"
+    }
+]);
+print("✓ course_registration_requests: " + db.course_registration_requests.countDocuments());
 
 // ══════════════════════════════════════════════════════════════════════════════
 print("\n════════════════════════════════════════════════");
