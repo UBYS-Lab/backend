@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Announcement;
 use App\Models\Course;
 use App\Models\CourseOffering;
+use App\Models\CourseRegistrationRequest;
 use App\Models\Enrollment;
 use App\Models\Grade;
 use App\Models\Semester;
@@ -111,5 +112,96 @@ class InstructorController extends Controller
             ]);
 
         return response()->json(['success' => true, 'announcements' => $announcements]);
+    }
+
+    public function registrationRequests(Request $request): JsonResponse
+    {
+        $instructorId = $request->get('instructor_id');
+        if (!$instructorId) {
+            return response()->json(['success' => false, 'message' => 'instructor_id required'], 422);
+        }
+
+        $semester = Semester::where('is_active', true)->first();
+        if (!$semester) {
+            return response()->json(['success' => true, 'requests' => []]);
+        }
+
+        $requests = CourseRegistrationRequest::where('semester_name', $semester->name)
+            ->where('instructor_ids', $instructorId)
+            ->orderBy('submitted_at', 'desc')
+            ->get()
+            ->map(fn($r) => [
+                'id'            => (string) $r->_id,
+                'student_no'    => $r->student_no,
+                'student_name'  => $r->student_name,
+                'department_id' => $r->department_id,
+                'courses'       => $r->requested_courses,
+                'total_credits' => $r->total_credits_requested,
+                'status'        => $r->status,
+                'feedback'      => $r->feedback,
+                'submitted_at'  => $r->submitted_at
+                    ? \Carbon\Carbon::parse($r->submitted_at)->format('d M Y H:i')
+                    : '',
+                'reviewed_at'   => $r->reviewed_at
+                    ? \Carbon\Carbon::parse($r->reviewed_at)->format('d M Y H:i')
+                    : null,
+            ]);
+
+        return response()->json(['success' => true, 'requests' => $requests]);
+    }
+
+    public function reviewRegistrationRequest(Request $request, string $id): JsonResponse
+    {
+        $instructorId = $request->get('instructor_id');
+        $action       = $request->get('action');
+        $feedback     = $request->get('feedback', '');
+
+        if (!$instructorId || !in_array($action, ['approve', 'reject'])) {
+            return response()->json(['success' => false, 'message' => 'instructor_id and action (approve/reject) required'], 422);
+        }
+
+        $regRequest = CourseRegistrationRequest::find($id);
+        if (!$regRequest) {
+            return response()->json(['success' => false, 'message' => 'Request not found'], 404);
+        }
+
+        $newStatus          = $action === 'approve' ? 'approved' : 'rejected';
+        $regRequest->status      = $newStatus;
+        $regRequest->feedback    = $feedback ?: null;
+        $regRequest->reviewed_at = new \DateTime();
+        $regRequest->reviewed_by = $instructorId;
+        $regRequest->save();
+
+        if ($newStatus === 'approved') {
+            foreach ($regRequest->requested_courses as $courseData) {
+                $exists = Enrollment::where('student_no', $regRequest->student_no)
+                    ->where('course_code', $courseData['course_code'])
+                    ->where('semester_name', $regRequest->semester_name)
+                    ->exists();
+
+                if (!$exists) {
+                    Enrollment::create([
+                        'student_no'      => $regRequest->student_no,
+                        'course_code'     => $courseData['course_code'],
+                        'semester_name'   => $regRequest->semester_name,
+                        'section'         => $courseData['section'] ?? 'A',
+                        'status'          => 'ongoing',
+                        'enrollment_date' => new \DateTime(),
+                        'created_at'      => new \DateTime(),
+                    ]);
+
+                    CourseOffering::where('course_code', $courseData['course_code'])
+                        ->where('semester_name', $regRequest->semester_name)
+                        ->increment('enrolled_count');
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $newStatus === 'approved'
+                ? 'Request approved and enrollments created.'
+                : 'Request rejected.',
+        ]);
     }
 }
