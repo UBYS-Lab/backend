@@ -16,4 +16,12 @@ fi
 php artisan config:clear >/dev/null 2>&1 || true
 php artisan route:clear  >/dev/null 2>&1 || true
 
+# MongoDB bağlantısını önceden ısıt (cold start gecikmesini önler)
+php -r "
+  require '/var/www/html/vendor/autoload.php';
+  \$app = require '/var/www/html/bootstrap/app.php';
+  \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+  try { DB::connection('mongodb')->command(['ping'=>1]); } catch(Exception \$e) {}
+" >/dev/null 2>&1 || true
+
 exec "$@"

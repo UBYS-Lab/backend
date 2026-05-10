@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SemesterHelper;
 use App\Models\Announcement;
 use App\Models\Course;
 use App\Models\CourseOffering;
@@ -45,7 +46,7 @@ class InstructorController extends Controller
 
         return response()->json([
             'success'  => true,
-            'semester' => $semester->name,
+            'semester' => SemesterHelper::tr($semester->name),
             'courses'  => $result,
         ]);
     }
