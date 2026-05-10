@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\InstructorController;
@@ -27,6 +28,14 @@ Route::prefix('instructor')->group(function () {
     Route::post('registration-requests/{id}/review',   [InstructorController::class, 'reviewRegistrationRequest']);
     Route::get('course-grades',                        [GradeController::class, 'getCourseGrades']);
     Route::post('course-grades/batch',                 [GradeController::class, 'batchEnterGrades']);
+});
+
+Route::prefix('announcements')->group(function () {
+    Route::get('/',                     [AnnouncementController::class, 'index']);
+    Route::get('/{id}',                 [AnnouncementController::class, 'show']);
+    Route::post('/{id}/like',           [AnnouncementController::class, 'like']);
+    Route::post('/{id}/react',          [AnnouncementController::class, 'react']);
+    Route::post('/{id}/comment',        [AnnouncementController::class, 'comment']);
 });
 
 Route::prefix('manager')->group(function () {
