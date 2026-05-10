@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GradeController;
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\ManagerController;
 use App\Http\Controllers\StudentController;
@@ -12,6 +13,7 @@ Route::prefix('student')->group(function () {
     Route::get('schedule',              [StudentController::class, 'schedule']);
     Route::get('announcements',         [StudentController::class, 'announcements']);
     Route::get('grades',                [StudentController::class, 'grades']);
+    Route::get('transcript',            [GradeController::class, 'getTranscript']);
     Route::get('available-courses',     [StudentController::class, 'availableCourses']);
     Route::post('registration-request', [StudentController::class, 'submitRegistrationRequest']);
     Route::get('registration-status',   [StudentController::class, 'registrationStatus']);
@@ -23,6 +25,8 @@ Route::prefix('instructor')->group(function () {
     Route::get('announcements',                        [InstructorController::class, 'announcements']);
     Route::get('registration-requests',                [InstructorController::class, 'registrationRequests']);
     Route::post('registration-requests/{id}/review',   [InstructorController::class, 'reviewRegistrationRequest']);
+    Route::get('course-grades',                        [GradeController::class, 'getCourseGrades']);
+    Route::post('course-grades/batch',                 [GradeController::class, 'batchEnterGrades']);
 });
 
 Route::prefix('manager')->group(function () {
