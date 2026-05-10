@@ -65,7 +65,14 @@ class StudentController extends Controller
                 'section'        => $enrollment->section,
                 'instructor'     => trim($instructorName),
                 'status'         => $enrollment->status,
-                'schedule'       => $offering?->schedule ?? [],
+                'schedule'       => collect($offering?->schedule ?? [])->map(fn($s) => array_merge($s, [
+                    'day' => match(strtolower($s['day'] ?? '')) {
+                        'monday'    => 'Pazartesi', 'tuesday'  => 'Salı',
+                        'wednesday' => 'Çarşamba',  'thursday' => 'Perşembe',
+                        'friday'    => 'Cuma',      'saturday' => 'Cumartesi',
+                        'sunday'    => 'Pazar',     default    => $s['day'] ?? '',
+                    },
+                ]))->values()->toArray(),
             ];
         })->values();
 
@@ -90,12 +97,16 @@ class StudentController extends Controller
             });
         }
 
-        $announcements = $query->orderBy('created_at', 'desc')->limit(5)->get()
+        $months = ['Jan'=>'Oca','Feb'=>'Şub','Mar'=>'Mar','Apr'=>'Nis','May'=>'May',
+                   'Jun'=>'Haz','Jul'=>'Tem','Aug'=>'Ağu','Sep'=>'Eyl','Oct'=>'Eki','Nov'=>'Kas','Dec'=>'Ara'];
+        $announcements = $query->orderBy('created_at', 'desc')->limit(15)->get()
             ->map(fn($a) => [
                 'title'     => $a->title,
                 'content'   => $a->content,
-                'priority'  => $a->priority,
-                'date'      => $a->created_at?->format('d M Y') ?? '',
+                'priority'  => $a->priority ?? 'normal',
+                'date'      => $a->created_at
+                    ? strtr($a->created_at->format('d M Y'), $months)
+                    : '',
                 'publisher' => $a->published_by,
             ]);
 
