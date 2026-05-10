@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SemesterHelper;
 use App\Models\Announcement;
 use App\Models\Course;
 use App\Models\Department;
@@ -70,7 +71,7 @@ class StudentController extends Controller
 
         return response()->json([
             'success'  => true,
-            'semester' => $semester->name,
+            'semester' => SemesterHelper::tr($semester->name),
             'schedule' => $schedule,
         ]);
     }
@@ -193,7 +194,7 @@ class StudentController extends Controller
 
         return response()->json([
             'success'          => true,
-            'semester'         => $semester->name,
+            'semester'         => SemesterHelper::tr($semester->name),
             'credits_allowed'  => $creditsAllowed,
             'existing_request' => $existingRequest ? [
                 'id'       => (string) $existingRequest->_id,

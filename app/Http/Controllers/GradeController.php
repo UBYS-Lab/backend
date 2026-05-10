@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SemesterHelper;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Grade;
@@ -32,10 +33,13 @@ class GradeController extends Controller
         $grades = Grade::where('student_no', $studentNo)->get();
         if ($grades->isEmpty()) return;
 
+        $courseCodes = $grades->pluck('course_code')->unique()->values()->toArray();
+        $courses = Course::whereIn('course_code', $courseCodes)->get()->keyBy('course_code');
+
         $weighted = 0.0;
         $total    = 0;
         foreach ($grades as $g) {
-            $credits   = Course::where('course_code', $g->course_code)->value('credits') ?? 3;
+            $credits   = (int)($courses[$g->course_code]?->credits ?? 3);
             $weighted += $credits * (float)$g->grade_point;
             $total    += $credits;
         }
@@ -62,38 +66,44 @@ class GradeController extends Controller
             ->where('semester_name', $semesterName)
             ->get();
 
+        $studentNos = $enrollments->pluck('student_no')->toArray();
+
+        // Toplu sorgular — N+1 yerine 3 sorgu
+        $students = Student::whereIn('student_no', $studentNos)->get()
+            ->keyBy('student_no');
+        $grades = Grade::whereIn('student_no', $studentNos)
+            ->where('course_code', $courseCode)
+            ->where('semester_name', $semesterName)
+            ->get()
+            ->keyBy('student_no');
+        $course = Course::where('course_code', $courseCode)->first();
+
         $rows = [];
         foreach ($enrollments as $e) {
-            $student = Student::where('student_no', $e->student_no)->first();
-            $grade   = Grade::where('student_no', $e->student_no)
-                ->where('course_code', $courseCode)
-                ->where('semester_name', $semesterName)
-                ->first();
-
+            $s     = $students[$e->student_no] ?? null;
+            $grade = $grades[$e->student_no]   ?? null;
             $rows[] = [
                 'student_no'   => $e->student_no,
-                'student_name' => $student
-                    ? ($student->personal['first_name'] . ' ' . $student->personal['last_name'])
+                'student_name' => $s
+                    ? ($s->personal['first_name'] . ' ' . $s->personal['last_name'])
                     : $e->student_no,
                 'midterm'      => $grade?->score_breakdown['midterm'] ?? null,
-                'final'        => $grade?->score_breakdown['final'] ?? null,
+                'final'        => $grade?->score_breakdown['final']   ?? null,
                 'homework'     => $grade?->score_breakdown['homework'] ?? null,
-                'raw_score'    => $grade?->raw_score ?? null,
+                'raw_score'    => $grade?->raw_score    ?? null,
                 'letter_grade' => $grade?->letter_grade ?? null,
-                'grade_point'  => $grade?->grade_point ?? null,
-                'is_passing'   => $grade?->is_passing ?? null,
+                'grade_point'  => $grade?->grade_point  ?? null,
+                'is_passing'   => $grade?->is_passing   ?? null,
                 'graded'       => $grade !== null,
             ];
         }
-
-        $course = Course::where('course_code', $courseCode)->first();
 
         return response()->json([
             'success'       => true,
             'course_code'   => $courseCode,
             'course_name'   => $course?->name ?? $courseCode,
             'credits'       => $course?->credits ?? 0,
-            'semester_name' => $semesterName,
+            'semester_name' => SemesterHelper::tr($semesterName),
             'students'      => $rows,
         ]);
     }
@@ -173,10 +183,14 @@ class GradeController extends Controller
 
         $grades = Grade::where('student_no', $studentNo)->get();
 
+        // Tüm kurs bilgilerini tek sorguda çek
+        $courseCodes = $grades->pluck('course_code')->unique()->values()->toArray();
+        $courseMap   = Course::whereIn('course_code', $courseCodes)->get()->keyBy('course_code');
+
         // ── Dönem bazlı gruplama ─────────────────────────────────────────────
         $bySemester = [];
         foreach ($grades as $g) {
-            $course = Course::where('course_code', $g->course_code)->first();
+            $course = $courseMap[$g->course_code] ?? null;
             $bySemester[$g->semester_name][] = [
                 'course_code'  => $g->course_code,
                 'course_name'  => $course?->name ?? $g->course_code,
@@ -211,7 +225,7 @@ class GradeController extends Controller
             $totalCredits  += $sc;
 
             $semesterSummaries[] = [
-                'semester_name'  => $semName,
+                'semester_name'  => SemesterHelper::tr($semName),
                 'courses'        => $courses,
                 'yano'           => $yano,
                 'credits_taken'  => $sc,
@@ -235,21 +249,20 @@ class GradeController extends Controller
             ->pluck('course_code')
             ->toArray();
 
-        $gradedCodes = Grade::where('student_no', $studentNo)
-            ->where('semester_name', $activeSem)
+        // Grades zaten bellekte — tekrar sorgu yerine filtrele
+        $gradedCodes = $grades
+            ->filter(fn($g) => $g->semester_name === $activeSem)
             ->pluck('course_code')
             ->toArray();
 
-        $pendingCodes = array_diff($activeEnrolls, $gradedCodes);
-        $pendingCourses = [];
-        foreach ($pendingCodes as $code) {
-            $course = Course::where('course_code', $code)->first();
-            $pendingCourses[] = [
-                'course_code' => $code,
-                'course_name' => $course?->name ?? $code,
-                'credits'     => (int)($course?->credits ?? 3),
-            ];
-        }
+        $pendingCodes = array_values(array_diff($activeEnrolls, $gradedCodes));
+        $pendingCourseMap = Course::whereIn('course_code', $pendingCodes)
+            ->get()->keyBy('course_code');
+        $pendingCourses = array_map(fn($code) => [
+            'course_code' => $code,
+            'course_name' => $pendingCourseMap[$code]?->name ?? $code,
+            'credits'     => (int)($pendingCourseMap[$code]?->credits ?? 3),
+        ], $pendingCodes);
 
         return response()->json([
             'success' => true,
@@ -265,7 +278,7 @@ class GradeController extends Controller
             'total_credits'    => $totalCredits,
             'repeat_semesters' => $repeatSemesters,
             'pending_courses'  => $pendingCourses,
-            'active_semester'  => $activeSem,
+            'active_semester'  => SemesterHelper::tr($activeSem ?? ''),
         ]);
     }
 }
