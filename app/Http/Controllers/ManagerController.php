@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Announcement;
+use App\Models\Attendance;
+use App\Models\AttendanceSession;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Enrollment;
@@ -89,5 +91,49 @@ class ManagerController extends Controller
             ]);
 
         return response()->json(['success' => true, 'announcements' => $announcements]);
+    }
+
+    public function attendanceOverview(Request $request): JsonResponse
+    {
+        $sessions = AttendanceSession::where('is_closed', true)
+            ->orderBy('date', 'desc')
+            ->limit(200)
+            ->get();
+
+        $byCourse = [];
+        foreach ($sessions as $s) {
+            $key = $s->course_code . '|' . $s->section;
+            if (!isset($byCourse[$key])) {
+                $byCourse[$key] = [
+                    'course_code'    => $s->course_code,
+                    'course_name'    => $s->course_name ?? $s->course_code,
+                    'section'        => $s->section,
+                    'session_count'  => 0,
+                    'total_present'  => 0,
+                    'total_absent'   => 0,
+                    'total_late'     => 0,
+                ];
+            }
+            $byCourse[$key]['session_count']++;
+            $byCourse[$key]['total_present'] += count($s->present_students ?? []);
+            $byCourse[$key]['total_absent']  += count($s->absent_students  ?? []);
+            $byCourse[$key]['total_late']    += count($s->late_students    ?? []);
+        }
+
+        $result = array_values(array_map(function ($c) {
+            $total = $c['total_present'] + $c['total_absent'] + $c['total_late'];
+            $c['attendance_rate'] = $total > 0
+                ? round(($c['total_present'] + $c['total_late']) / $total * 100, 1)
+                : 0;
+            return $c;
+        }, $byCourse));
+
+        usort($result, fn($a, $b) => $a['attendance_rate'] <=> $b['attendance_rate']);
+
+        return response()->json([
+            'success'         => true,
+            'total_sessions'  => $sessions->count(),
+            'courses'         => $result,
+        ]);
     }
 }
