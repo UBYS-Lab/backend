@@ -51,11 +51,13 @@ class AttendanceController extends Controller
             $existing->expires_at = $expiresAt;
             if (empty($existing->absent_students) && empty($existing->present_students) && empty($existing->late_students)) {
                 $existing->absent_students = $enrolledNos;
+                foreach ($enrolledNos as $no) {
+                    $this->upsertAttendance($existing, $no, 'absent', 'auto');
+                }
             }
             $existing->save();
             $session = $existing;
         } else {
-
             $session = AttendanceSession::create([
                 'course_code'      => $courseCode,
                 'course_name'      => $offering->course_name ?? $courseCode,
@@ -70,6 +72,9 @@ class AttendanceController extends Controller
                 'late_students'    => [],
                 'is_closed'        => false,
             ]);
+            foreach ($enrolledNos as $no) {
+                $this->upsertAttendance($session, $no, 'absent', 'auto');
+            }
         }
 
         return response()->json([
@@ -179,9 +184,12 @@ class AttendanceController extends Controller
         $session = AttendanceSession::find($sessionId);
         if (!$session) return response()->json(['success' => false], 404);
 
-        foreach ($session->absent_students ?? [] as $no) {
-            $this->upsertAttendance($session, $no, 'absent', 'auto');
-        }
+        $present = $session->present_students ?? [];
+        $absent  = $session->absent_students  ?? [];
+        $late    = $session->late_students    ?? [];
+        foreach ($present as $no) { $this->upsertAttendance($session, $no, 'present', 'qr'); }
+        foreach ($late    as $no) { $this->upsertAttendance($session, $no, 'late',    'manual'); }
+        foreach ($absent  as $no) { $this->upsertAttendance($session, $no, 'absent',  'auto'); }
         $session->is_closed = true;
         $session->save();
 
@@ -252,7 +260,7 @@ class AttendanceController extends Controller
         foreach ($records as $r) {
             $code = $r->course_code;
             if (!isset($byCourse[$code])) {
-                $byCourse[$code] = ['course_code'=>$code, 'total'=>0, 'present'=>0, 'absent'=>0, 'late'=>0, 'records'=>[]];
+                $byCourse[$code] = ['course_code'=>$code, 'course_name'=>$r->course_name ?? $code, 'total'=>0, 'present'=>0, 'absent'=>0, 'late'=>0, 'records'=>[]];
             }
             $byCourse[$code]['total']++;
             $byCourse[$code][$r->status]++;
@@ -327,14 +335,16 @@ class AttendanceController extends Controller
             ->delete();
 
         Attendance::create([
-            'session_id'  => (string) $session->_id,
-            'course_code' => $session->course_code,
-            'section'     => $session->section,
-            'student_no'  => $studentNo,
-            'date'        => $session->date,
-            'week_number' => $session->week_number,
-            'status'      => $status,
-            'method'      => $method,
+            'session_id'    => (string) $session->_id,
+            'course_code'   => $session->course_code,
+            'course_name'   => $session->course_name ?? $session->course_code,
+            'section'       => $session->section,
+            'instructor_id' => $session->instructor_id,
+            'student_no'    => $studentNo,
+            'date'          => $session->date,
+            'week_number'   => $session->week_number,
+            'status'        => $status,
+            'method'        => $method,
         ]);
     }
 }

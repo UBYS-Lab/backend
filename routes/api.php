@@ -58,7 +58,8 @@ Route::prefix('announcements')->group(function () {
 });
 
 Route::prefix('manager')->group(function () {
-    Route::get('stats',         [ManagerController::class, 'stats']);
-    Route::get('activities',    [ManagerController::class, 'activities']);
-    Route::get('announcements', [ManagerController::class, 'announcements']);
+    Route::get('stats',               [ManagerController::class, 'stats']);
+    Route::get('activities',          [ManagerController::class, 'activities']);
+    Route::get('announcements',       [ManagerController::class, 'announcements']);
+    Route::get('attendance-overview', [ManagerController::class, 'attendanceOverview']);
 });

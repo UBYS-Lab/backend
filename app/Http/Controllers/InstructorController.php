@@ -35,11 +35,16 @@ class InstructorController extends Controller
         $courseCodes = $offerings->pluck('course_code')->unique()->values()->toArray();
         $courses = Course::whereIn('course_code', $courseCodes)->get()->keyBy('course_code');
 
+        $enrollmentCounts = Enrollment::whereIn('course_code', $courseCodes)
+            ->get(['course_code', 'section', 'student_no'])
+            ->groupBy(fn($e) => $e->course_code . '|' . $e->section)
+            ->map(fn($g) => $g->pluck('student_no')->unique()->count());
+
         $result = $offerings->map(fn($o) => [
             'course_code'    => $o->course_code,
             'course_name'    => $courses->get($o->course_code)?->name ?? $o->course_code,
             'section'        => $o->section,
-            'enrolled_count' => $o->enrolled_count ?? 0,
+            'enrolled_count' => $enrollmentCounts->get($o->course_code . '|' . $o->section) ?? 0,
             'capacity'       => $o->capacity,
             'schedule'       => $o->schedule ?? [],
         ])->values();
