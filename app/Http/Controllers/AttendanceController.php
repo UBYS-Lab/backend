@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceSession;
 use App\Models\CourseOffering;
 use App\Models\Enrollment;
+use App\Models\Student;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,11 @@ class AttendanceController extends Controller
 
         $date      = now()->format('Y-m-d');
         $weekNo    = (int) now()->format('W');
-        $qrToken   = bin2hex(random_bytes(16));
+        $chars   = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $qrToken = '';
+        for ($i = 0; $i < 8; $i++) {
+            $qrToken .= $chars[random_int(0, strlen($chars) - 1)];
+        }
         $expiresAt = now()->addMinutes(15);
 
         $existing = AttendanceSession::where('course_code', $courseCode)
@@ -37,16 +42,19 @@ class AttendanceController extends Controller
             ->where('date', $date)
             ->first();
 
+        $enrolledNos = Enrollment::where('course_code', $courseCode)
+            ->where('section', $section)
+            ->pluck('student_no')->unique()->values()->toArray();
+
         if ($existing && !$existing->is_closed) {
-            $existing->qr_token  = $qrToken;
+            $existing->qr_token   = $qrToken;
             $existing->expires_at = $expiresAt;
+            if (empty($existing->absent_students) && empty($existing->present_students) && empty($existing->late_students)) {
+                $existing->absent_students = $enrolledNos;
+            }
             $existing->save();
             $session = $existing;
         } else {
-            $enrolledNos = Enrollment::where('course_code', $courseCode)
-                ->where('section', $section)
-                ->where('status', 'approved')
-                ->pluck('student_no')->toArray();
 
             $session = AttendanceSession::create([
                 'course_code'      => $courseCode,
@@ -58,7 +66,7 @@ class AttendanceController extends Controller
                 'qr_token'         => $qrToken,
                 'expires_at'       => $expiresAt,
                 'present_students' => [],
-                'absent_students'  => $enrolledNos,
+                'absent_students'  => $enrolledNos ?? [],
                 'late_students'    => [],
                 'is_closed'        => false,
             ]);
@@ -81,6 +89,35 @@ class AttendanceController extends Controller
         $session = AttendanceSession::find($sessionId);
         if (!$session) return response()->json(['success' => false, 'message' => 'Oturum bulunamadı'], 404);
 
+        $present = $session->present_students ?? [];
+        $absent  = $session->absent_students  ?? [];
+        $late    = $session->late_students    ?? [];
+
+        $allNos = array_unique(array_merge($present, $absent, $late));
+
+        if (empty($allNos)) {
+            $allNos = Enrollment::where('course_code', $session->course_code)
+                ->where('section', $session->section)
+                ->pluck('student_no')->unique()->values()->toArray();
+            $absent = $allNos;
+        }
+
+        $studentNames = Student::whereIn('student_no', $allNos)
+            ->get(['student_no', 'personal'])
+            ->mapWithKeys(fn($s) => [
+                $s->student_no => trim(
+                    ($s->personal['first_name'] ?? '') . ' ' .
+                    ($s->personal['last_name']  ?? '')
+                ),
+            ])->toArray();
+
+        $orderedStudents = array_map(fn($no) => [
+            'student_no' => $no,
+            'name'       => $studentNames[$no] ?? $no,
+            'status'     => in_array($no, $present) ? 'present'
+                          : (in_array($no, $late) ? 'late' : 'absent'),
+        ], $allNos);
+
         return response()->json([
             'success'          => true,
             'session_id'       => (string) $session->_id,
@@ -90,9 +127,10 @@ class AttendanceController extends Controller
             'week_number'      => $session->week_number,
             'is_closed'        => $session->is_closed,
             'expires_at'       => $session->expires_at?->toIso8601String(),
-            'present_students' => $session->present_students ?? [],
-            'absent_students'  => $session->absent_students ?? [],
-            'late_students'    => $session->late_students ?? [],
+            'present_students' => $present,
+            'absent_students'  => $absent,
+            'late_students'    => $late,
+            'students'         => $orderedStudents,
             'qr_token'         => $session->is_closed ? null : $session->qr_token,
         ]);
     }
@@ -169,11 +207,22 @@ class AttendanceController extends Controller
         }
 
         $present = $session->present_students ?? [];
-        if (in_array($studentNo, $present)) {
-            return response()->json(['success' => true, 'message' => 'Yoklamaya zaten kaydedildiniz', 'already' => true]);
+        $absent  = $session->absent_students  ?? [];
+        $late    = $session->late_students    ?? [];
+
+        $allEnrolled = array_merge($present, $absent, $late);
+        if (!in_array($studentNo, $allEnrolled)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bu derse kayıtlı değilsiniz. Yoklamaya katılamazsınız.',
+            ], 403);
         }
 
-        $absent = array_values(array_diff($session->absent_students ?? [], [$studentNo]));
+        if (in_array($studentNo, $present)) {
+            return response()->json(['success' => true, 'message' => 'Yoklamaya zaten kaydedildiniz', 'already' => true, 'course_name' => $session->course_name]);
+        }
+
+        $absent = array_values(array_diff($absent, [$studentNo]));
         $present[] = $studentNo;
 
         $session->present_students = $present;

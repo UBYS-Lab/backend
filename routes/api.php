@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+Route::get('/host-ip', function () {
+    return response()->json([
+        'ip'   => env('APP_HOST_IP', '127.0.0.1'),
+        'port' => 8001,
+    ]);
+});
+
 Route::prefix('student')->group(function () {
     Route::get('schedule',              [StudentController::class, 'schedule']);
     Route::get('announcements',         [StudentController::class, 'announcements']);
