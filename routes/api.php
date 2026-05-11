@@ -60,6 +60,25 @@ Route::prefix('announcements')->group(function () {
 Route::prefix('manager')->group(function () {
     Route::get('stats',               [ManagerController::class, 'stats']);
     Route::get('activities',          [ManagerController::class, 'activities']);
-    Route::get('announcements',       [ManagerController::class, 'announcements']);
     Route::get('attendance-overview', [ManagerController::class, 'attendanceOverview']);
+
+    Route::get   ('students',                   [ManagerController::class, 'students']);
+    Route::put   ('students/{studentNo}',        [ManagerController::class, 'updateStudent']);
+
+    Route::get   ('instructors',                [ManagerController::class, 'instructors']);
+    Route::put   ('instructors/{staffId}',       [ManagerController::class, 'updateInstructor']);
+
+    Route::get   ('courses',                    [ManagerController::class, 'courses']);
+    Route::put   ('courses/{code}/toggle',       [ManagerController::class, 'toggleCourse']);
+
+    Route::get   ('announcements',              [ManagerController::class, 'allAnnouncements']);
+    Route::post  ('announcements',              [ManagerController::class, 'createAnnouncement']);
+    Route::put   ('announcements/{id}/toggle',  [ManagerController::class, 'toggleAnnouncement']);
+    Route::delete('announcements/{id}',         [ManagerController::class, 'deleteAnnouncement']);
+
+    Route::get   ('reports',                    [ManagerController::class, 'reports']);
+
+    Route::get   ('settings',                   [ManagerController::class, 'settings']);
+    Route::post  ('settings/semesters',         [ManagerController::class, 'createSemester']);
+    Route::put   ('settings/semesters/{id}/activate', [ManagerController::class, 'activateSemester']);
 });
