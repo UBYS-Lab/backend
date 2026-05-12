@@ -16,6 +16,9 @@ fi
 php artisan config:clear >/dev/null 2>&1 || true
 php artisan route:clear  >/dev/null 2>&1 || true
 
+mkdir -p storage/app/assignments storage/logs storage/framework/cache storage/framework/sessions storage/framework/views
+chmod -R 777 storage bootstrap/cache
+
 # MongoDB bağlantısını önceden ısıt (cold start gecikmesini önler)
 php -r "
   require '/var/www/html/vendor/autoload.php';
