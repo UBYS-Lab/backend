@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GradeController;
@@ -81,4 +82,18 @@ Route::prefix('manager')->group(function () {
     Route::get   ('settings',                   [ManagerController::class, 'settings']);
     Route::post  ('settings/semesters',         [ManagerController::class, 'createSemester']);
     Route::put   ('settings/semesters/{id}/activate', [ManagerController::class, 'activateSemester']);
+});
+
+Route::prefix('assignment')->group(function () {
+    // Instructor
+    Route::get   ('instructor',                           [AssignmentController::class, 'instructorAssignments']);
+    Route::post  ('instructor',                           [AssignmentController::class, 'createAssignment']);
+    Route::get   ('instructor/{id}/submissions',          [AssignmentController::class, 'assignmentSubmissions']);
+    Route::get   ('instructor/submission/{sid}/download', [AssignmentController::class, 'downloadSubmission']);
+    Route::post  ('instructor/submission/{sid}/grade',    [AssignmentController::class, 'gradeSubmission']);
+    Route::delete('instructor/{id}',                      [AssignmentController::class, 'deleteAssignment']);
+
+    // Student
+    Route::get   ('student',                [AssignmentController::class, 'studentAssignments']);
+    Route::post  ('student/{id}/submit',    [AssignmentController::class, 'submitAssignment']);
 });
